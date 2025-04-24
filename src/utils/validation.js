@@ -1,9 +1,15 @@
 /**
+ * Validation utilities for forms and input fields
+ */
+
+/**
  * Validate email address format
  * @param {string} email - Email address to validate
  * @returns {boolean} - True if valid, false otherwise
  */
 export function isValidEmail(email) {
+  if (!email) return false;
+  // Basic email regex pattern
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
@@ -14,32 +20,39 @@ export function isValidEmail(email) {
  * @returns {Object} - Validation result with isValid flag and message
  */
 export function validatePassword(password) {
-  if (!password || password.length < 8) {
+  if (!password) {
     return {
       isValid: false,
-      message: 'Password must be at least 8 characters long'
+      message: "Password is required",
     };
   }
-  
+
+  if (password.length < 8) {
+    return {
+      isValid: false,
+      message: "Password must be at least 8 characters long",
+    };
+  }
+
   // Check for at least one number
   if (!/\d/.test(password)) {
     return {
       isValid: false,
-      message: 'Password must contain at least one number'
+      message: "Password must contain at least one number",
     };
   }
-  
+
   // Check for at least one uppercase letter
   if (!/[A-Z]/.test(password)) {
     return {
       isValid: false,
-      message: 'Password must contain at least one uppercase letter'
+      message: "Password must contain at least one uppercase letter",
     };
   }
-  
+
   return {
     isValid: true,
-    message: 'Password is strong'
+    message: "Password is strong",
   };
 }
 
@@ -49,6 +62,8 @@ export function validatePassword(password) {
  * @returns {boolean} - True if valid, false otherwise
  */
 export function isValidURL(url) {
+  if (!url) return false;
+
   try {
     new URL(url);
     return true;
@@ -65,14 +80,14 @@ export function isValidURL(url) {
  */
 export function isValidSocialHandle(handle, platform) {
   if (!handle) return false;
-  
+
   switch (platform.toLowerCase()) {
-    case 'instagram':
-    case 'twitter':
-    case 'tiktok':
+    case "instagram":
+    case "twitter":
+    case "tiktok":
       // Simple validation - no spaces or special characters except underscore
       return /^[a-zA-Z0-9_]+$/.test(handle);
-    case 'youtube':
+    case "youtube":
       // YouTube channels can have spaces and some special characters
       return handle.length > 0;
     default:
@@ -111,64 +126,72 @@ export function isValidFutureDate(dateStr) {
  */
 export function validateAgreementForm(formData) {
   const errors = {};
-  
+
   // Validate title
-  if (!formData.title || formData.title.trim() === '') {
-    errors.title = 'Agreement title is required';
+  if (!formData.title || formData.title.trim() === "") {
+    errors.title = "Agreement title is required";
   }
-  
+
   // Validate influencer
   if (!formData.influencer || !formData.influencer.name) {
-    errors.influencer = { name: 'Influencer name is required' };
+    errors.influencer = { name: "Influencer name is required" };
   }
-  
-  if (formData.influencer && formData.influencer.email && !isValidEmail(formData.influencer.email)) {
-    errors.influencer = { 
+
+  if (
+    formData.influencer &&
+    formData.influencer.email &&
+    !isValidEmail(formData.influencer.email)
+  ) {
+    errors.influencer = {
       ...errors.influencer,
-      email: 'Invalid email address'
+      email: "Invalid email address",
     };
   }
-  
+
   // Validate equity details
   if (!isValidEquityPercentage(formData.equityDetails?.percentageOffered)) {
-    errors.equityDetails = { 
+    errors.equityDetails = {
       ...errors.equityDetails,
-      percentageOffered: 'Equity percentage must be between 0.01% and 100%'
+      percentageOffered: "Equity percentage must be between 0.01% and 100%",
     };
   }
-  
+
   // Validate at least one deliverable
   if (!formData.deliverables || formData.deliverables.length === 0) {
-    errors.deliverables = 'At least one deliverable is required';
+    errors.deliverables = "At least one deliverable is required";
   } else {
     // Validate each deliverable
-    const deliverableErrors = formData.deliverables.map(deliverable => {
+    const deliverableErrors = formData.deliverables.map((deliverable) => {
       const delErrors = {};
-      
-      if (!deliverable.description || deliverable.description.trim() === '') {
-        delErrors.description = 'Description is required';
+
+      if (!deliverable.description || deliverable.description.trim() === "") {
+        delErrors.description = "Description is required";
       }
-      
+
       if (!deliverable.dueDate) {
-        delErrors.dueDate = 'Due date is required';
+        delErrors.dueDate = "Due date is required";
       } else if (!isValidFutureDate(deliverable.dueDate)) {
-        delErrors.dueDate = 'Due date must be in the future';
+        delErrors.dueDate = "Due date must be in the future";
       }
-      
-      if (!deliverable.metrics || !deliverable.metrics.target || deliverable.metrics.target <= 0) {
-        delErrors.metrics = { target: 'Target must be greater than 0' };
+
+      if (
+        !deliverable.metrics ||
+        !deliverable.metrics.target ||
+        deliverable.metrics.target <= 0
+      ) {
+        delErrors.metrics = { target: "Target must be greater than 0" };
       }
-      
+
       return Object.keys(delErrors).length > 0 ? delErrors : null;
     });
-    
-    if (deliverableErrors.some(err => err !== null)) {
+
+    if (deliverableErrors.some((err) => err !== null)) {
       errors.deliverables = deliverableErrors;
     }
   }
-  
+
   return {
     isValid: Object.keys(errors).length === 0,
-    errors
+    errors,
   };
 }

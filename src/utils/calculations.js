@@ -1,113 +1,88 @@
-/**
- * Calculate monthly vesting amount based on equity details
- * @param {Object} equityDetails - Equity details object
- * @returns {number} - Monthly vesting percentage
- */
-export function calculateMonthlyVesting(equityDetails) {
-  const { percentageOffered, vestingPeriod } = equityDetails;
-  if (!vestingPeriod || vestingPeriod === 0) return 0;
-  return percentageOffered / vestingPeriod;
-}
+// Calculate total equity value based on company valuation
+export const calculateEquityValue = (percentageOffered, companyValuation) => {
+  if (!percentageOffered || !companyValuation) return 0;
+  
+  return (percentageOffered / 100) * companyValuation;
+};
 
-/**
- * Calculate total vested equity based on elapsed time
- * @param {Object} equityDetails - Equity details object
- * @param {string} startDate - ISO date string of agreement start
- * @returns {number} - Total vested percentage
- */
-export function calculateVestedEquity(equityDetails, startDate) {
-  const { percentageOffered, vestingPeriod, cliffPeriod } = equityDetails;
-  const start = new Date(startDate);
-  const now = new Date();
+// Calculate vesting schedule
+export const calculateVestingSchedule = (percentageOffered, vestingPeriod, cliffPeriod) => {
+  if (!percentageOffered || !vestingPeriod) return [];
   
-  // Calculate months elapsed
-  const monthsElapsed = (
-    (now.getFullYear() - start.getFullYear()) * 12 + 
-    (now.getMonth() - start.getMonth())
-  );
-  
-  // If before cliff, nothing vested
-  if (monthsElapsed < cliffPeriod) return 0;
-  
-  // Calculate monthly vesting
-  const monthlyVesting = calculateMonthlyVesting(equityDetails);
-  
-  // Calculate total vested (capped at total percentage)
-  return Math.min(percentageOffered, monthlyVesting * monthsElapsed);
-}
-
-/**
- * Generate vesting schedule for the full vesting period
- * @param {Object} equityDetails - Equity details object
- * @param {string} startDate - ISO date string of agreement start
- * @returns {Array} - Array of vesting events
- */
-export function generateVestingSchedule(equityDetails, startDate) {
-  const { percentageOffered, vestingPeriod, cliffPeriod } = equityDetails;
-  const start = new Date(startDate);
-  const monthlyVesting = calculateMonthlyVesting(equityDetails);
+  const monthlyVesting = percentageOffered / vestingPeriod;
   const schedule = [];
   
   for (let month = 1; month <= vestingPeriod; month++) {
-    const date = new Date(start);
-    date.setMonth(date.getMonth() + month);
-    
-    let vestedThisMonth = 0;
-    let cumulativeVested = 0;
+    let vestedAmount = 0;
     
     if (month >= cliffPeriod) {
       // At cliff, vest all accumulated equity
       if (month === cliffPeriod) {
-        vestedThisMonth = monthlyVesting * cliffPeriod;
+        vestedAmount = monthlyVesting * cliffPeriod;
       } else {
-        vestedThisMonth = monthlyVesting;
+        vestedAmount = monthlyVesting;
       }
-      
-      cumulativeVested = Math.min(percentageOffered, monthlyVesting * month);
     }
     
     schedule.push({
       month,
-      date: date.toISOString(),
-      vestedThisMonth,
-      cumulativeVested
+      vestedAmount,
+      cumulativeVested: month >= cliffPeriod 
+        ? Math.min(percentageOffered, monthlyVesting * (month < cliffPeriod ? 0 : month))
+        : 0
     });
   }
   
   return schedule;
-}
+};
 
-/**
- * Calculate engagement rate based on social media metrics
- * @param {Object} metrics - Object containing views, likes, comments, shares
- * @returns {number} - Engagement rate percentage
- */
-export function calculateEngagementRate(metrics) {
-  const { views, likes = 0, comments = 0, shares = 0 } = metrics;
+// Calculate ROI multiple
+export const calculateRoiMultiple = (equityValue, alternativeCost) => {
+  if (!equityValue || !alternativeCost || alternativeCost === 0) return 0;
+  
+  return equityValue / alternativeCost;
+};
+
+// Calculate engagement rate
+export const calculateEngagementRate = (likes, comments, shares, views) => {
   if (!views || views === 0) return 0;
   
-  const engagementActions = likes + comments + shares;
-  return (engagementActions / views) * 100;
-}
+  const totalEngagements = (likes || 0) + (comments || 0) + (shares || 0);
+  return (totalEngagements / views) * 100;
+};
 
-/**
- * Calculate ROI based on equity value and estimated cash equivalent
- * @param {number} equityValue - Value of equity granted
- * @param {number} cashEquivalent - Estimated cash cost for similar services
- * @returns {number} - ROI multiplier
- */
-export function calculateROI(equityValue, cashEquivalent) {
-  if (!cashEquivalent || cashEquivalent === 0) return 0;
-  return equityValue / cashEquivalent;
-}
-
-/**
- * Calculate progress percentage towards a target
- * @param {number} current - Current value
- * @param {number} target - Target value
- * @returns {number} - Progress percentage
- */
-export function calculateProgress(current, target) {
+// Calculate target achievement percentage
+export const calculateTargetAchievement = (actual, target) => {
   if (!target || target === 0) return 0;
-  return Math.min(100, (current / target) * 100);
-}
+  
+  return (actual / target) * 100;
+};
+
+// Calculate monthly vesting amount
+export const calculateMonthlyVesting = (percentageOffered, vestingPeriod) => {
+  if (!percentageOffered || !vestingPeriod || vestingPeriod === 0) return 0;
+  
+  return percentageOffered / vestingPeriod;
+};
+
+// Calculate cliff vesting amount
+export const calculateCliffVesting = (percentageOffered, vestingPeriod, cliffPeriod) => {
+  if (!percentageOffered || !vestingPeriod || vestingPeriod === 0 || !cliffPeriod) return 0;
+  
+  const monthlyVesting = percentageOffered / vestingPeriod;
+  return monthlyVesting * cliffPeriod;
+};
+
+// Calculate remaining vesting
+export const calculateRemainingVesting = (percentageOffered, vestedToDate) => {
+  if (!percentageOffered || !vestedToDate) return percentageOffered;
+  
+  return Math.max(0, percentageOffered - vestedToDate);
+};
+
+// Calculate vesting percentage
+export const calculateVestingPercentage = (vestedToDate, percentageOffered) => {
+  if (!percentageOffered || percentageOffered === 0) return 0;
+  
+  return (vestedToDate / percentageOffered) * 100;
+};

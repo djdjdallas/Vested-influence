@@ -1,153 +1,71 @@
-/**
- * Generate a PDF document for an agreement
- * 
- * Note: In a production app, this would use a PDF generation library like pdfmake
- * For this example, we're just showing the structure of how this would work
- */
+// Note: In a real app, you would use a library like pdfmake for this functionality
 
-export default async function generateAgreementPDF(agreement) {
-  try {
-    // In a real app, this would import and use PDF generation libraries
-    // This is a placeholder to show the structure
-    
-    // For example, with pdfmake:
-    // import pdfMake from 'pdfmake/build/pdfmake';
-    // import pdfFonts from 'pdfmake/build/vfs_fonts';
-    // pdfMake.vfs = pdfFonts.pdfMake.vfs;
-    
-    if (!agreement) {
-      throw new Error('Agreement data is required');
+export default function generateAgreement(agreement) {
+  // This function would use pdfmake to create a PDF document
+  // For demo purposes, we'll just return a placeholder message
+  
+  console.log('Generating PDF for agreement:', agreement.title);
+  
+  // In a real implementation, this would be pdfmake code like:
+  /*
+  import pdfMake from 'pdfmake/build/pdfmake';
+  import pdfFonts from 'pdfmake/build/vfs_fonts';
+  
+  pdfMake.vfs = pdfFonts.pdfMake.vfs;
+  
+  const documentDefinition = {
+    content: [
+      { text: 'Influencer Equity Agreement', style: 'header' },
+      { text: agreement.title, style: 'subheader' },
+      
+      { text: 'Parties', style: 'sectionHeader' },
+      { text: 'This agreement is between:' },
+      { text: 'Company: ' + agreement.company.name },
+      { text: 'Influencer: ' + agreement.influencer.name },
+      
+      { text: 'Equity Terms', style: 'sectionHeader' },
+      { text: 'Percentage Offered: ' + agreement.equityDetails.percentageOffered + '%' },
+      { text: 'Vesting Period: ' + agreement.equityDetails.vestingPeriod + ' months' },
+      { text: 'Cliff Period: ' + agreement.equityDetails.cliffPeriod + ' months' },
+      
+      // Deliverables section
+      { text: 'Deliverables', style: 'sectionHeader' },
+      ...agreement.deliverables.map(d => ({
+        text: '- ' + d.description + ' (Due: ' + new Date(d.dueDate).toLocaleDateString() + ')'
+      })),
+      
+      // Additional terms
+      { text: 'Additional Terms', style: 'sectionHeader' },
+      { text: agreement.additionalTerms || 'No additional terms specified.' },
+      
+      // Signatures
+      { text: 'Signatures', style: 'sectionHeader', pageBreak: 'before' },
+      { text: 'Company Representative: ______________________________     Date: ____________' },
+      { text: '\n\n' },
+      { text: 'Influencer: ______________________________     Date: ____________' },
+    ],
+    styles: {
+      header: { fontSize: 22, bold: true, margin: [0, 0, 0, 10] },
+      subheader: { fontSize: 16, bold: true, margin: [0, 10, 0, 20] },
+      sectionHeader: { fontSize: 14, bold: true, margin: [0, 15, 0, 10] }
     }
-    
-    // Sample document definition
-    const documentDefinition = {
-      content: [
-        { text: 'INFLUENCER EQUITY AGREEMENT', style: 'header' },
-        { text: agreement.title, style: 'subheader' },
-        { text: '\n' },
-        
-        { text: 'PARTIES', style: 'sectionHeader' },
-        {
-          text: [
-            'This Influencer Equity Agreement (the "Agreement") is entered into between ',
-            'COMPANY NAME',
-            ' ("Company") and ',
-            agreement.influencer.name,
-            ' ("Influencer") as of ',
-            new Date(agreement.createdAt).toLocaleDateString(),
-            '.'
-          ]
-        },
-        { text: '\n' },
-        
-        { text: 'EQUITY COMPENSATION', style: 'sectionHeader' },
-        {
-          text: [
-            'The Company agrees to grant the Influencer ',
-            `${agreement.equityDetails.percentageOffered}%`,
-            ' of the Company\'s common stock, subject to the vesting schedule and conditions outlined below.'
-          ]
-        },
-        { text: '\n' },
-        
-        { text: 'VESTING SCHEDULE', style: 'sectionHeader' },
-        {
-          text: [
-            'The equity shall vest over a period of ',
-            `${agreement.equityDetails.vestingPeriod} months`,
-            ', with a cliff period of ',
-            `${agreement.equityDetails.cliffPeriod} months`,
-            '. This means no equity will vest until the cliff date, at which point ',
-            `${(agreement.equityDetails.percentageOffered * (agreement.equityDetails.cliffPeriod / agreement.equityDetails.vestingPeriod)).toFixed(2)}%`,
-            ' will vest. Thereafter, equity will vest monthly at a rate of ',
-            `${(agreement.equityDetails.percentageOffered / agreement.equityDetails.vestingPeriod).toFixed(3)}%`,
-            ' per month.'
-          ]
-        },
-        { text: '\n' },
-        
-        { text: 'DELIVERABLES', style: 'sectionHeader' },
-        'The Influencer agrees to perform the following marketing services:',
-        {
-          ul: agreement.deliverables.map(deliverable => ({
-            text: [
-              deliverable.description,
-              ' (Due: ',
-              new Date(deliverable.dueDate).toLocaleDateString(),
-              ') with a target of ',
-              `${deliverable.metrics.target.toLocaleString()} ${deliverable.metrics.type}`,
-            ]
-          }))
-        },
-        { text: '\n' },
-        
-        // Additional terms
-        agreement.additionalTerms && [
-          { text: 'ADDITIONAL TERMS', style: 'sectionHeader' },
-          agreement.additionalTerms,
-          { text: '\n' }
-        ],
-        
-        // Signatures
-        { text: 'SIGNATURES', style: 'sectionHeader' },
-        {
-          columns: [
-            {
-              width: '*',
-              text: [
-                'Company: ____________________\n\n',
-                'Name: ____________________\n\n',
-                'Title: ____________________\n\n',
-                'Date: ____________________'
-              ]
-            },
-            {
-              width: '*',
-              text: [
-                'Influencer: ____________________\n\n',
-                `Name: ${agreement.influencer.name}\n\n`,
-                'Date: ____________________'
-              ]
-            }
-          ]
-        }
-      ],
-      styles: {
-        header: {
-          fontSize: 18,
-          bold: true,
-          alignment: 'center',
-          margin: [0, 0, 0, 10]
-        },
-        subheader: {
-          fontSize: 14,
-          bold: true,
-          alignment: 'center',
-          margin: [0, 0, 0, 20]
-        },
-        sectionHeader: {
-          fontSize: 12,
-          bold: true,
-          margin: [0, 10, 0, 5]
-        }
-      }
-    };
-    
-    // In a real app, this would generate and return the PDF
-    // const pdfDoc = pdfMake.createPdf(documentDefinition);
-    // return new Promise((resolve) => {
-    //   pdfDoc.getBuffer((buffer) => {
-    //     resolve(buffer);
-    //   });
-    // });
-    
-    // For demo purposes, just return the document structure
-    return {
-      success: true,
-      document: documentDefinition
-    };
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw error;
-  }
+  };
+  
+  // Create PDF
+  const pdfDocGenerator = pdfMake.createPdf(documentDefinition);
+  
+  // Return as blob or base64
+  return new Promise((resolve) => {
+    pdfDocGenerator.getBase64((data) => {
+      resolve(data);
+    });
+  });
+  */
+  
+  // For demo purposes, return a mock promise
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`data:application/pdf;base64,JVBERi0xLjMNCiXi48/TDQoNCjEgMCBvYmoNCjw8DQovVHlwZSAvQ2F0YWxvZw0KL091dGxpbmVzIDIgMCBSDQovUGFnZXMgMyAwIFINCj4+DQplbmRvYmoNCg0KMiAwIG9iag0KPDwNCi9UeXBlIC9PdXRsaW5lcw0KL0NvdW50IDANCj4+DQplbmRvYmoNCg0KMyAwIG9iag0KPDwNCi9UeXBlIC9QYWdlcw0KL0NvdW50IDINCi9LaWRzIFsgNCAwIFIgNiAwIFIgXQ0KPj4NCmVuZG9iag0KDQo0IDAgb2JqDQo8PA0KL1R5cGUgL1BhZ2UNCi9QYXJlbnQgMyAwIFINCi9SZXNvdXJjZXMgPDwNCi9Gb250IDw8DQovRjEgOSAwIFIgDQo+Pg0KL1Byb2NTZXQgOCAwIFINCj4+DQovTWVkaWFCb3ggWzAgMCA2MTIuMDAwMCA3OTIuMDAwMF0NCi9Db250ZW50cyA1IDAgUg0KPj4NCmVuZG9iag0KDQo1IDAgb2JqDQo8PCAvTGVuZ3RoIDEwNzQgPj4NCnN0cmVhbQ0KMiAwIG8NCnENCkJUDQovRjEgMCBUZg0KMTYgMCAwIDE2IDkwLjAyNCAxMDMuMTM2IFRtDQooSW5mbHVlbmNlciBFcXVpdHkgQWdyZWVtZW50KSBUag0KRVQNCUJUDG==`);
+    }, 500);
+  });
 }

@@ -1,189 +1,171 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import supabase from '@/lib/supabase/client';
 
-export default function useAgreements(options = {}) {
+export default function useAgreements() {
   const [agreements, setAgreements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  const { status } = options;
-  
-  useEffect(() => {
-    async function fetchAgreements() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Build query params
-        let url = '/api/agreements';
-        const params = new URLSearchParams();
-        if (status) params.append('status', status);
-        if (params.toString()) url += `?${params.toString()}`;
-        
-        // In a real app, this would fetch from the API
-        // const response = await fetch(url);
-        // if (!response.ok) throw new Error('Failed to fetch agreements');
-        // const data = await response.json();
-        // setAgreements(data.agreements);
-        
-        // For demo purposes, return mock data
-        const mockAgreements = [
-          { 
-            id: '1', 
-            title: 'Fitness Product Campaign', 
-            influencer: 'Alex Fitness', 
-            status: 'active', 
-            equityOffered: '1.0%', 
-            milestones: { completed: 2, total: 5 },
-            createdAt: '2025-03-15',
-          },
-          { 
-            id: '2', 
-            title: 'Tech Review Series', 
-            influencer: 'Jordan Smith', 
-            status: 'active', 
-            equityOffered: '0.5%', 
-            milestones: { completed: 1, total: 3 },
-            createdAt: '2025-03-20',
-          },
-          { 
-            id: '3', 
-            title: 'Fashion Collection Promotion', 
-            influencer: 'Mia Johnson', 
-            status: 'pending', 
-            equityOffered: '0.75%', 
-            milestones: { completed: 0, total: 4 },
-            createdAt: '2025-04-01',
-          },
-          { 
-            id: '4', 
-            title: 'Cooking Show Integration', 
-            influencer: 'Chef Taylor', 
-            status: 'completed', 
-            equityOffered: '0.25%', 
-            milestones: { completed: 3, total: 3 },
-            createdAt: '2025-02-10',
-          }
-        ];
-        
-        // Filter by status if provided
-        const filteredAgreements = status
-          ? mockAgreements.filter(a => a.status === status)
-          : mockAgreements;
-        
-        setAgreements(filteredAgreements);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchAgreements();
-  }, [status]);
-  
-  const createAgreement = async (agreementData) => {
+
+  // Fetch all agreements
+  const fetchAgreements = async (filters = {}) => {
     try {
+      setLoading(true);
       setError(null);
+
+      // Build query params from filters
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+
+      // Fetch from API
+      const response = await fetch(`/api/agreements?${params.toString()}`);
       
-      // In a real app, this would POST to the API
-      // const response = await fetch('/api/agreements', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(agreementData)
-      // });
-      // if (!response.ok) throw new Error('Failed to create agreement');
-      // const data = await response.json();
-      // const newAgreement = data.agreement;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch agreements');
+      }
       
-      // For demo purposes, mock creation
-      const newAgreement = {
-        id: String(agreements.length + 1),
-        ...agreementData,
-        createdAt: new Date().toISOString(),
-        status: 'pending'
-      };
+      const data = await response.json();
+      setAgreements(data.agreements);
       
-      setAgreements(prev => [...prev, newAgreement]);
-      return newAgreement;
+      return data.agreements;
     } catch (err) {
       setError(err.message);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
-  
+
+  // Get single agreement by ID
   const getAgreement = async (id) => {
     try {
+      setLoading(true);
       setError(null);
+
+      const response = await fetch(`/api/agreements/${id}`);
       
-      // In a real app, this would GET from the API
-      // const response = await fetch(`/api/agreements/${id}`);
-      // if (!response.ok) throw new Error('Failed to fetch agreement');
-      // const data = await response.json();
-      // return data.agreement;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch agreement');
+      }
       
-      // For demo purposes, find in current state
-      const agreement = agreements.find(a => a.id === id);
-      if (!agreement) throw new Error('Agreement not found');
-      return agreement;
+      const data = await response.json();
+      return data.agreement;
     } catch (err) {
       setError(err.message);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
-  
+
+  // Create new agreement
+  const createAgreement = async (agreementData) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/agreements', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(agreementData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create agreement');
+      }
+      
+      const data = await response.json();
+      
+      // Update local state
+      setAgreements((prev) => [...prev, data.agreement]);
+      
+      return data.agreement;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update agreement
   const updateAgreement = async (id, updates) => {
     try {
+      setLoading(true);
       setError(null);
+
+      const response = await fetch(`/api/agreements/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
       
-      // In a real app, this would PUT to the API
-      // const response = await fetch(`/api/agreements/${id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(updates)
-      // });
-      // if (!response.ok) throw new Error('Failed to update agreement');
-      // const data = await response.json();
-      // const updatedAgreement = data.agreement;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update agreement');
+      }
       
-      // For demo purposes, update in current state
-      const updatedAgreements = agreements.map(a => 
-        a.id === id ? { ...a, ...updates } : a
+      const data = await response.json();
+      
+      // Update local state
+      setAgreements((prev) =>
+        prev.map((agreement) => (agreement.id === id ? data.agreement : agreement))
       );
       
-      setAgreements(updatedAgreements);
-      return updatedAgreements.find(a => a.id === id);
+      return data.agreement;
     } catch (err) {
       setError(err.message);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
-  
+
+  // Delete agreement
   const deleteAgreement = async (id) => {
     try {
+      setLoading(true);
       setError(null);
+
+      const response = await fetch(`/api/agreements/${id}`, {
+        method: 'DELETE',
+      });
       
-      // In a real app, this would DELETE to the API
-      // const response = await fetch(`/api/agreements/${id}`, { method: 'DELETE' });
-      // if (!response.ok) throw new Error('Failed to delete agreement');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete agreement');
+      }
       
-      // For demo purposes, remove from current state
-      setAgreements(prev => prev.filter(a => a.id !== id));
-      return { success: true };
+      // Update local state
+      setAgreements((prev) => prev.filter((agreement) => agreement.id !== id));
+      
+      return true;
     } catch (err) {
       setError(err.message);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
-  
+
   return {
     agreements,
     loading,
     error,
-    createAgreement,
+    fetchAgreements,
     getAgreement,
+    createAgreement,
     updateAgreement,
-    deleteAgreement
+    deleteAgreement,
   };
 }

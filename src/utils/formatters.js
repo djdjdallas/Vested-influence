@@ -1,41 +1,91 @@
-/**
- * Format a number with commas as thousands separators
- * @param {number} num - The number to format
- * @returns {string} - Formatted number with commas
- */
-export function formatNumber(num) {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-/**
- * Format a date in a human-readable format
- * @param {string} dateStr - ISO date string
- * @param {object} options - Intl.DateTimeFormat options
- * @returns {string} - Formatted date string
- */
-export function formatDate(dateStr, options = {}) {
-  const date = new Date(dateStr);
-  const defaultOptions = { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  };
+// Date formatter
+export const formatDate = (dateString) => {
+  if (!dateString) return '';
   
-  return date.toLocaleDateString('en-US', { ...defaultOptions, ...options });
-}
+  const date = new Date(dateString);
+  
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
 
-/**
- * Format a date as a relative time (e.g., "2 days ago")
- * @param {string} dateStr - ISO date string
- * @returns {string} - Relative time string
- */
-export function formatRelativeTime(dateStr) {
-  const date = new Date(dateStr);
+// Number formatter with commas
+export const formatNumber = (num) => {
+  if (num === undefined || num === null) return '';
+  
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+// Currency formatter
+export const formatCurrency = (amount, currency = 'USD') => {
+  if (amount === undefined || amount === null) return '';
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency
+  }).format(amount);
+};
+
+// Percentage formatter
+export const formatPercentage = (value, decimalPlaces = 2) => {
+  if (value === undefined || value === null) return '';
+  
+  return `${value.toFixed(decimalPlaces)}%`;
+};
+
+// Engagement rate calculator
+export const calculateEngagementRate = (engagements, impressions) => {
+  if (!impressions || impressions === 0) return 0;
+  
+  return (engagements / impressions) * 100;
+};
+
+// Truncate long text with ellipsis
+export const truncateText = (text, maxLength = 100) => {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  
+  return text.substring(0, maxLength) + '...';
+};
+
+// Status formatter
+export const formatStatus = (status) => {
+  if (!status) return '';
+  
+  // Convert from kebab-case or snake_case to Title Case
+  return status
+    .replace(/[-_]/g, ' ')
+    .replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+};
+
+// Social media handle formatter
+export const formatSocialHandle = (handle, platform) => {
+  if (!handle) return '';
+  
+  switch (platform.toLowerCase()) {
+    case 'instagram':
+    case 'twitter':
+    case 'tiktok':
+      return `@${handle.replace(/^@/, '')}`;
+    case 'youtube':
+      return handle;
+    default:
+      return handle;
+  }
+};
+
+// Time ago formatter
+export const timeAgo = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now - date) / 1000);
   
   if (diffInSeconds < 60) {
-    return 'just now';
+    return `${diffInSeconds} second${diffInSeconds !== 1 ? 's' : ''} ago`;
   }
   
   const diffInMinutes = Math.floor(diffInSeconds / 60);
@@ -60,38 +110,4 @@ export function formatRelativeTime(dateStr) {
   
   const diffInYears = Math.floor(diffInMonths / 12);
   return `${diffInYears} year${diffInYears !== 1 ? 's' : ''} ago`;
-}
-
-/**
- * Format a percentage value
- * @param {number} value - Raw decimal value (e.g., 0.125)
- * @param {number} decimals - Number of decimal places
- * @returns {string} - Formatted percentage string
- */
-export function formatPercentage(value, decimals = 2) {
-  return `${(value * 100).toFixed(decimals)}%`;
-}
-
-/**
- * Format a currency value
- * @param {number} value - Monetary value
- * @param {string} currency - Currency code (default: USD)
- * @returns {string} - Formatted currency string
- */
-export function formatCurrency(value, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency
-  }).format(value);
-}
-
-/**
- * Truncate text to a specific length and add ellipsis
- * @param {string} text - Text to truncate
- * @param {number} length - Maximum length
- * @returns {string} - Truncated text
- */
-export function truncateText(text, length = 100) {
-  if (!text || text.length <= length) return text;
-  return `${text.substring(0, length).trim()}...`;
-}
+};
