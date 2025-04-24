@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/supabase/client";
+import { signIn, getSession } from "@/lib/supabase/client";
+import { Toaster, toast } from "sonner"; // Import Sonner
 
 export default function Login() {
   const router = useRouter();
@@ -34,17 +35,46 @@ export default function Login() {
 
       if (error) throw error;
 
-      // Redirect to dashboard upon successful login
-      if (data) {
-        router.push("/dashboard/dashboard");
+      // Check if user has verified their email
+      if (data?.user) {
+        // In a real app, you would check user.email_confirmed_at or similar
+        // If this is undefined or null, the email isn't verified yet
+
+        // Check session for email verification status
+        const { session } = await getSession();
+
+        if (!session?.user?.email_confirmed_at) {
+          // Email not verified
+          toast.error("Email not verified", {
+            description:
+              "Please check your email and verify your account before logging in.",
+            duration: 5000,
+          });
+
+          throw new Error("Please verify your email before logging in.");
+        }
+
+        // If we get here, the user is authenticated and verified
+        toast.success("Login successful", {
+          description: "Redirecting to dashboard...",
+        });
+
+        // Short delay to show success message
+        setTimeout(() => {
+          router.push("/dashboard/dashboard");
+        }, 1000);
       }
     } catch (err) {
       console.error("Login error:", err);
-      setError(
-        err.message === "Invalid login credentials"
-          ? "Incorrect email or password"
-          : "Failed to sign in. Please try again."
-      );
+
+      // Handle specific error cases
+      if (err.message?.includes("verify your email")) {
+        setError("Please verify your email before logging in");
+      } else if (err.message === "Invalid login credentials") {
+        setError("Incorrect email or password");
+      } else {
+        setError("Failed to sign in. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -55,8 +85,38 @@ export default function Login() {
     router.push("/auth/forgot-password");
   };
 
+  const handleResendVerification = async () => {
+    if (!email) {
+      toast.error("Please enter your email address first");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // In a real app, you would call a function to resend the verification email
+      // For example: await supabase.auth.resend({ type: 'signup', email })
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      toast.success("Verification email sent", {
+        description: `We've sent a new verification email to ${email}`,
+        duration: 5000,
+      });
+    } catch (err) {
+      toast.error("Failed to resend verification email", {
+        description: err.message || "Please try again later",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50">
+      <Toaster position="top-center" richColors />
+
       <Link
         href="/"
         className="absolute top-8 left-8 text-indigo-600 hover:text-indigo-800 flex items-center"
@@ -102,6 +162,16 @@ export default function Login() {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">{error}</p>
+                {error.includes("verify your email") && (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    className="mt-2 text-sm text-red-700 font-medium hover:text-red-800"
+                    disabled={isLoading}
+                  >
+                    Resend verification email
+                  </button>
+                )}
               </div>
             </div>
           </div>

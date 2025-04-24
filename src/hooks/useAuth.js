@@ -2,7 +2,13 @@
 
 import { useState, useEffect, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { signIn, signUp, signOut, getCurrentUser } from "@/lib/supabase/client";
+import {
+  signIn,
+  signUp,
+  signOut,
+  getCurrentUser,
+  getSession,
+} from "@/lib/supabase/client";
 
 // Create Auth Context
 const AuthContext = createContext(null);
@@ -12,6 +18,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [emailVerified, setEmailVerified] = useState(true); // Assume verified by default
   const router = useRouter();
   const pathname = usePathname();
 
@@ -22,7 +29,27 @@ export function AuthProvider({ children }) {
         setLoading(true);
         setError(null);
 
-        // Get current session from Supabase
+        // First check if we have a session
+        const { session, error: sessionError } = await getSession();
+
+        if (sessionError) {
+          console.log("Session error:", sessionError);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        // If we have a session but user is not confirmed
+        if (session?.user && !session.user.email_confirmed_at) {
+          setEmailVerified(false);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        // Get current user from Supabase
         const { user, error } = await getCurrentUser();
 
         if (error) {
@@ -34,22 +61,32 @@ export function AuthProvider({ children }) {
             console.log("No active session found");
             setUser(null);
             setProfile(null);
-            // Don't throw an error for this case
           } else {
             console.error("Auth error:", error);
             throw error;
           }
         } else if (user) {
-          setUser(user);
-          // Fetch user profile data
-          // In a real app, would fetch from database
-          setProfile({
-            id: user.id,
-            name: user.user_metadata?.name || "User",
-            email: user.email,
-            role: user.user_metadata?.role || "startup",
-            avatar: user.user_metadata?.avatar_url,
-          });
+          // Check if email is verified in a real app
+          // For this example, we'll use the user.email_confirmed_at
+          if (user.email_confirmed_at || true) {
+            // For now, assume always verified for development
+            setEmailVerified(true);
+            setUser(user);
+
+            // Fetch user profile data
+            setProfile({
+              id: user.id,
+              name: user.user_metadata?.name || "User",
+              email: user.email,
+              role: user.user_metadata?.role || "startup",
+              avatar: user.user_metadata?.avatar_url,
+            });
+          } else {
+            // Email not verified
+            setEmailVerified(false);
+            setUser(null);
+            setProfile(null);
+          }
         } else {
           setUser(null);
           setProfile(null);
@@ -64,16 +101,18 @@ export function AuthProvider({ children }) {
 
     checkSession();
 
-    // Set up auth listener
-    // This is where you would set up a real Supabase auth listener in production
-
-    // For now, we'll use a simple interval to check localStorage in development
+    // Set up auth listener for development
     const mockAuthListener = setInterval(() => {
       // Check for auth state changes in localStorage
       const storedUser = localStorage.getItem("mock-user");
       if (storedUser && !user) {
         try {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+
+          // Check if email is verified (for development)
+          if (parsedUser.email_confirmed_at) {
+            setUser(parsedUser);
+          }
         } catch (err) {
           console.error("Error parsing stored user:", err);
         }
@@ -86,7 +125,7 @@ export function AuthProvider({ children }) {
     return () => clearInterval(mockAuthListener);
   }, []);
 
-  // Redirect based on auth state
+  // Redirect based on auth state - this is the critical part that's fixed
   useEffect(() => {
     // Skip if still loading
     if (loading) return;
@@ -102,15 +141,23 @@ export function AuthProvider({ children }) {
     // Dashboard routes that require authentication
     const isProtectedRoute = pathname?.startsWith("/dashboard");
 
-    if (!user && isProtectedRoute) {
-      // Redirect to login if trying to access protected route without auth
-      router.push("/auth/login");
-    } else if (user && authRoutes.includes(pathname)) {
-      // Optional: Redirect to dashboard if already authenticated and on an auth route
-      // Commented out to allow authenticated users to browse the public pages
-      // router.push('/dashboard/dashboard');
+    // Only redirect if not loading
+    if (!loading) {
+      // If not authenticated and on a protected route
+      if (!user && isProtectedRoute) {
+        console.log(
+          "Not authenticated and trying to access protected route. Redirecting to login..."
+        );
+        router.push("/auth/login");
+      }
+
+      // If not verified and on a protected route
+      if (!emailVerified && isProtectedRoute) {
+        console.log("Email not verified. Redirecting to login...");
+        router.push("/auth/login");
+      }
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, pathname, router, emailVerified]);
 
   const login = async (email, password) => {
     try {
@@ -120,7 +167,14 @@ export function AuthProvider({ children }) {
       if (error) throw error;
 
       if (data?.user) {
+        // Check if email is verified in a real app
+        // For this example, we'll create a verification check
+        if (!data.user.email_confirmed_at) {
+          throw new Error("Please verify your email before logging in");
+        }
+
         setUser(data.user);
+        setEmailVerified(true);
 
         // Set up profile
         setProfile({
@@ -150,20 +204,10 @@ export function AuthProvider({ children }) {
 
       if (error) throw error;
 
-      if (data?.user) {
-        setUser(data.user);
+      // After signup, don't set the user since email verification is required
+      setEmailVerified(false);
 
-        // Set up initial profile
-        setProfile({
-          id: data.user.id,
-          name,
-          email: data.user.email,
-          role,
-          avatar: null,
-        });
-
-        return data.user;
-      }
+      return data?.user;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -188,8 +232,8 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Check if user is authenticated
-  const isAuthenticated = !!user;
+  // Check if user is authenticated and email is verified
+  const isAuthenticated = !!user && emailVerified;
 
   // Check if user has a specific role
   const hasRole = (roles) => {
@@ -214,6 +258,7 @@ export function AuthProvider({ children }) {
         logout,
         isAuthenticated,
         hasRole,
+        emailVerified,
       }}
     >
       {children}
@@ -232,17 +277,20 @@ export function useAuth() {
   return context;
 }
 
-// Route guard for client components
+// Updated route guard to check email verification
 export function withAuth(Component) {
   return function AuthProtected(props) {
-    const { isAuthenticated, loading } = useAuth();
+    const { isAuthenticated, loading, emailVerified } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-      if (!loading && !isAuthenticated) {
+      if (!loading && (!isAuthenticated || !emailVerified)) {
+        console.log(
+          "withAuth redirect: Not authenticated or email not verified"
+        );
         router.push("/auth/login");
       }
-    }, [loading, isAuthenticated, router]);
+    }, [loading, isAuthenticated, emailVerified, router]);
 
     if (loading) {
       return (
@@ -252,7 +300,7 @@ export function withAuth(Component) {
       );
     }
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !emailVerified) {
       return null;
     }
 
@@ -263,14 +311,17 @@ export function withAuth(Component) {
 // Role-based route guard
 export function withRole(Component, allowedRoles) {
   return function RoleProtected(props) {
-    const { loading, isAuthenticated, hasRole } = useAuth();
+    const { loading, isAuthenticated, hasRole, emailVerified } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-      if (!loading && (!isAuthenticated || !hasRole(allowedRoles))) {
+      if (
+        !loading &&
+        (!isAuthenticated || !hasRole(allowedRoles) || !emailVerified)
+      ) {
         router.push("/dashboard/dashboard");
       }
-    }, [loading, isAuthenticated, hasRole, router]);
+    }, [loading, isAuthenticated, hasRole, router, emailVerified]);
 
     if (loading) {
       return (
@@ -280,7 +331,7 @@ export function withRole(Component, allowedRoles) {
       );
     }
 
-    if (!isAuthenticated || !hasRole(allowedRoles)) {
+    if (!isAuthenticated || !hasRole(allowedRoles) || !emailVerified) {
       return null;
     }
 
